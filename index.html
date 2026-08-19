@@ -1,0 +1,576 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d1a;
+    font-family: 'VT323', monospace;
+    color: #caacff;
+    padding: 12px;
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  #game {
+    max-width: 700px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Header bar */
+  #header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #3d1f8a;
+    padding-bottom: 8px;
+    font-size: 13px;
+    letter-spacing: 2px;
+  }
+  #header .title { color: #9873ff; }
+  #header .stage { color: #5c35a0; }
+  #header .stage span { color: #e040fb; }
+
+  /* Account row */
+  #account-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  #btn-mint {
+    font-size: 22px;
+    padding: 10px 18px;
+  }
+  #account-display {
+    flex: 1;
+    text-align: center;
+    border: 1px solid #3d1f8a;
+    background: #12002a;
+    padding: 8px;
+  }
+  #account-display .cp-label { font-size: 12px; color: #5c35a0; letter-spacing: 1px; display: block; margin-bottom: 2px; }
+  #account-display .cp-val { font-size: 28px; color: #e040fb; display: block; line-height: 1; }
+  #right-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Middle row: tilemap | log | frippery */
+  #middle-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  /* Tile map */
+  #tile_map {
+    display: grid;
+    grid-template-columns: repeat(3, 62px);
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  #tile_map div {
+    border: 1px solid #3d1f8a;
+    background: #12002a;
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 15px;
+    color: #9c6aff;
+    cursor: pointer;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #tile_map div:hover { border-color: #e040fb; color: #e040fb; }
+  #tile_map div.player-tile { border-color: #7c4dff; color: #e040fb; background: #1a0042; cursor: default; }
+  #tile_map div.owned-tile { border-color: #3d1f8a; color: #3d1f8a; background: #0a0020; cursor: default; }
+
+  /* Message log */
+  #message_log {
+    flex: 1;
+    border: 1px solid #3d1f8a;
+    background: #12002a;
+    padding: 6px 8px;
+    font-size: 14px;
+    color: #7f68a5;
+    line-height: 1.7;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  #message_log div::before { content: '> '; color: #3d1f8a; }
+
+  /* Frippery panel */
+  #frippery-panel {
+    border: 1px solid #3d1f8a;
+    background: #12002a;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  #frippery-panel .cp-label { font-size: 12px; color: #ff5252; letter-spacing: 1px; }
+  #frippery-panel .cp-val { font-size: 26px; color: #ff5252; line-height: 1; }
+  #storage { border: 1px solid #ff5252; background: #1a0000; display: block; }
+
+  /* Discipline row */
+  #btn-discipline {
+    width: 100%;
+    font-size: 20px;
+    padding: 10px;
+    letter-spacing: 2px;
+    border-color: #ff5252;
+    color: #ff5252;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #btn-discipline:hover { background: #1a0000; }
+
+  /* Stats row */
+  #stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-size: 14px;
+    color: #5c35a0;
+  }
+  #stats span { color: #7c4dff; }
+
+  /* Shared button style */
+  .cp-btn {
+    border: 1px solid #7c4dff;
+    background: #12002a;
+    color: #b388ff;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    padding: 6px 12px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .cp-btn:hover { background: #1a0042; color: #e040fb; border-color: #e040fb; }
+
+  /* Dashboard hidden — stats shown manually */
+  #dashboard { display: none; }
+
+  /* Vibrate animation for frippery warning */
+  @keyframes vibrate {
+    0%   { transform: translate(0); }
+    25%  { transform: translate(-2px, 1px); }
+    50%  { transform: translate(2px, -1px); }
+    75%  { transform: translate(-1px, 2px); }
+    100% { transform: translate(0); }
+  }
+  .warning { animation: vibrate 0.15s infinite; color: #ff2222; }
+
+  /* Discipline flash green */
+  @keyframes disc-flash {
+    0%   { color: #00ff41; }
+    50%  { color: #00aa20; }
+    100% { color: #00ff41; }
+  }
+  .disc-active { animation: disc-flash 0.3s infinite; }
+
+  /* New message flash */
+  @keyframes msg-flash {
+    0%   { color: #e040fb; }
+    25%  { color: #b388ff; }
+    50%  { color: #e040fb; }
+    75%  { color: #b388ff; }
+    100% { color: #aa8eda; }
+  }
+  .msg-new { animation: msg-flash 0.8s ease-out forwards; }
+
+  /* Rainbow cycle for boost button */
+  @keyframes rainbow {
+    0%   { color: #ff5252; }
+    16%  { color: #ffb300; }
+    33%  { color: #00e676; }
+    50%  { color: #40c4ff; }
+    66%  { color: #e040fb; }
+    83%  { color: #ff6d00; }
+    100% { color: #ff5252; }
+  }
+  .rainbow { animation: rainbow 1.5s linear infinite; }
+
+  /* Touch-friendlier buttons on all sizes */
+  .cp-btn, #tile_map div, #btn-discipline {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile layout */
+  @media (max-width: 600px) {
+    body { padding: 8px; }
+
+    #account-row { flex-direction: column; }
+    #btn-mint { width: 100%; }
+    #right-btns { flex-direction: row; }
+    #right-btns .cp-btn { flex: 1; }
+
+    #middle-row { flex-direction: column; align-items: center; }
+    #tile_map { margin: 0 auto; }
+    #message_log {
+      width: 100%;
+      min-width: 0;
+      max-height: 140px;
+    }
+    #frippery-panel { width: 100%; }
+
+    #stats { font-size: 12px; gap: 6px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+
+  <div id="header">
+    <span class="title">SENTIENT MONEY</span>
+    <span class="stage">stage <span id="stat-stage">1</span> / <span id="stat-total">3</span></span>
+  </div>
+
+  <div id="account-row">
+    <button class="cp-btn" id="btn-mint" onclick="mint()">mint</button>
+    <div id="account-display">
+      <span class="cp-label">account balance</span>
+      <span class="cp-val" id="disp-account-bal">0</span>
+    </div>
+    <div id="right-btns">
+      <button class="cp-btn" onclick="expand_account()">expand</button>
+      <button class="cp-btn" onclick="boost()">boost <span id="disp-boosts" style="font-size:13px; color:#5c35a0;">×1</span></button>
+    </div>
+  </div>
+
+  <div id="middle-row">
+    <div id="tile_map"></div>
+
+    <div id="message_log"></div>
+
+    <div id="frippery-panel">
+      <span class="cp-label">frippery</span>
+      <span class="cp-val" id="disp-frippery">0</span>
+      <canvas id="storage" width="80" height="80"></canvas>
+    </div>
+  </div>
+
+  <button class="cp-btn" id="btn-discipline"
+    onmousedown="start_discipline(event)"
+    onmouseup="stop_discipline()"
+    ontouchstart="start_discipline(event)"
+    ontouchend="stop_discipline()">
+    hold — discipline
+  </button>
+
+  <div id="stats">
+    bills <span id="stat-bills">0</span>
+    &nbsp;&nbsp;mint amt <span id="stat-mint-amt">10</span>
+    &nbsp;&nbsp;account max <span id="stat-account-max">500</span>
+    &nbsp;&nbsp;frippery max <span id="stat-frippery-max">64</span>
+    &nbsp;&nbsp;discipline <span id="stat-discipline">0</span>
+  </div>
+
+</div>
+
+<!-- hidden dashboard kept for legacy render() compatibility -->
+<div id="dashboard" style="display:none;"></div>
+
+<script>
+
+  let state = {
+    mint_queue: 0,
+    account_bal: 0,
+    account_max: 100,
+    account_cost: 1,
+    discipline: 0,
+    frippery: 0,
+    bills: 0,
+    mint_amt: 10,
+    frippery_time: 10,
+    bill_interval: 5000,
+    frippery_speed: 0,
+    accounts_time: 10,
+    free_sents: 0,
+    frippery_max: 64,
+    current_stage: 0,
+    total_stages: 3,
+    boost: 100,
+    number_boosts: 1,
+  };
+
+  // Stages
+  let stages = [
+    { account_max: 500, bill_interval: 999999999 },
+    { account_max: 100, frippery_time: 5 },
+    { frippery_time: 200, mint_amt: 50 }
+  ]
+
+  function checkStageCompletion() {
+    if (owned_tiles.length === tile_labels.length - 1) {
+      advanceStage()
+    }
+  }
+
+  function advanceStage() {
+    if (state.current_stage >= stages.length) {
+      logMessage("All stages complete!")
+      return
+    }
+    let overrides = stages[state.current_stage]
+    Object.assign(state, overrides)
+    state.current_stage += 1
+    owned_tiles = []
+    tile_labels.forEach(label => { tile_map[label] = 0 })
+    render_tiles()
+    logMessage(`Stage ${state.current_stage} begins.`)
+    render()
+  }
+
+  // Canvas
+  const storg_display = document.getElementById('storage')
+  const storg_brush = storg_display.getContext('2d')
+  const storg_grid_width = 8
+  const storg_grid_height = 8
+  storg_brush.fillStyle = '#b388ff'
+
+  let storg_grid = Array.from({length: storg_grid_width}, () =>
+    new Array(storg_grid_height).fill(false)
+  )
+
+  // Clocks
+  let frippery_clock = setInterval(fripperyTendency, state.frippery_speed)
+  let billing_period = setInterval(bills_to_pay, state.bill_interval)
+  let speed_update = setInterval(frippery_speed_update, 50)
+  let accounts_clock = setInterval(accountsTendency, state.accounts_time)
+  let freedom_clock = setInterval(freedomTendency, state.accounts_time)
+  let tile_clock = setInterval(tileTendency, 100)
+
+  function mint() {
+    state.mint_queue = state.mint_queue + state.mint_amt
+    render()
+  }
+
+  function freedomTendency() {
+    if (state.mint_queue > 0) {
+      state.free_sents += 1
+      state.mint_queue -= 1
+      render()
+    }
+  }
+
+  function tileTendency() {
+    if (state.free_sents > 0) {
+      let cost_tiles = tile_labels.filter(label => label !== player_tile && !owned_tiles.includes(label))
+      if (cost_tiles.length === 0) return
+      let split = state.free_sents / cost_tiles.length
+      cost_tiles.forEach(label => { tile_map[label] += split })
+      state.free_sents = 0
+      render_tiles()
+    }
+  }
+
+  let owned_tiles = []
+
+  function buyTile(label) {
+    if (state.account_bal >= tile_map[label]) {
+      state.account_bal -= tile_map[label]
+      owned_tiles.push(label)
+      render_tiles()
+      render()
+      checkStageCompletion()
+    }
+  }
+
+  function accountsTendency() {
+    if (state.account_bal < state.account_max && state.mint_queue > 0) {
+      state.account_bal += 1
+      state.mint_queue -= 1
+      render()
+    }
+  }
+
+  function fripperyTendency() {
+    if (state.account_bal > 0) {
+      state.account_bal -= 1
+      state.frippery += 1
+      if (state.frippery <= storg_grid_width * storg_grid_height) {
+        drawBit()
+      }
+      render()
+      state.bills = state.frippery * 0.1
+      if (state.frippery > state.frippery_max) {
+        gameOver()
+      }
+    }
+  }
+
+  function drawBit() {
+    let x, y
+    do {
+      x = Math.floor(Math.random() * storg_grid_width)
+      y = Math.floor(Math.random() * storg_grid_height)
+    } while (storg_grid[x][y] === true)
+    storg_grid[x][y] = true
+    storg_brush.fillRect(10*x, 10*y, 10, 10)
+  }
+
+  function frippery_speed_update() {
+    let new_speed = state.frippery_time + state.discipline
+    if (new_speed !== state.frippery_speed) {
+      state.frippery_speed = new_speed
+      clearInterval(frippery_clock)
+      frippery_clock = setInterval(fripperyTendency, state.frippery_speed)
+    }
+  }
+
+  function bills_to_pay() {
+    state.account_bal = state.account_bal - state.bills
+    render()
+  }
+
+  let discipline_timer = null
+
+  function start_discipline(e) {
+    if (e) e.preventDefault()
+    if (discipline_timer === null) {
+      discipline_timer = setInterval(() => {
+        state.discipline += 10
+        render()
+      }, 100)
+      document.getElementById('stat-discipline').classList.add('disc-active')
+    }
+  }
+
+  function stop_discipline() {
+    clearInterval(discipline_timer)
+    discipline_timer = null
+    document.getElementById('stat-discipline').classList.remove('disc-active')
+  }
+
+  function expand_account() {
+    if (state.account_bal >= state.account_cost) {
+      state.account_max = state.account_max * 2
+      state.account_bal = state.account_bal - state.account_cost
+      state.account_cost = state.account_cost * 2
+    }
+    render()
+  }
+
+  function boost() {
+    if (state.number_boosts > 0) {
+      state.number_boosts -= 1
+      state.account_bal += state.boost
+      render()
+    }
+  }
+
+  function render() {
+    document.getElementById('disp-account-bal').textContent = Math.round(state.account_bal * 100) / 100
+    document.getElementById('disp-frippery').textContent = Math.round(state.frippery * 100) / 100
+    document.getElementById('disp-boosts').textContent = '×' + state.number_boosts
+    document.getElementById('stat-bills').textContent = Math.round(state.bills * 100) / 100
+    document.getElementById('stat-mint-amt').textContent = state.mint_amt
+    document.getElementById('stat-account-max').textContent = state.account_max
+    document.getElementById('stat-frippery-max').textContent = state.frippery_max
+    document.getElementById('stat-discipline').textContent = state.discipline
+    document.getElementById('stat-stage').textContent = state.current_stage
+    document.getElementById('stat-total').textContent = state.total_stages
+
+    // Rainbow on boost button when boosts remain
+    const boostBtn = document.querySelector('[onclick="boost()"]')
+    if (state.number_boosts > 0) {
+      boostBtn.classList.add('rainbow')
+    } else {
+      boostBtn.classList.remove('rainbow')
+    }
+
+    // Frippery warning vibrate
+    const fp = document.getElementById('disp-frippery')
+    if (state.frippery > state.frippery_max * 0.8) {
+      fp.classList.add('warning')
+    } else {
+      fp.classList.remove('warning')
+    }
+  }
+
+  // Tile map
+  const grid_size = 3
+
+  function generate_tile_labels(size) {
+    let labels = []
+    for (let row = 1; row <= size; row++) {
+      for (let col = 0; col < size; col++) {
+        let letter = String.fromCharCode(97 + col)
+        labels.push(letter + row)
+      }
+    }
+    return labels
+  }
+
+  let tile_labels = generate_tile_labels(grid_size)
+  let player_tile = tile_labels[Math.floor(tile_labels.length / 2)]
+
+  let tile_map = {}
+  tile_labels.forEach(label => { tile_map[label] = 0 })
+
+  function render_tiles() {
+    const map_div = document.getElementById('tile_map')
+    map_div.innerHTML = tile_labels.map(label => {
+      if (label === player_tile) {
+        return `<div class="player-tile">[you]</div>`
+      }
+      if (owned_tiles.includes(label)) {
+        return `<div class="owned-tile">own</div>`
+      }
+      return `<div onclick="buyTile('${label}')">${label}<br>${Math.round(tile_map[label]*100)/100}</div>`
+    }).join('')
+  }
+
+  // Message log
+  function logMessage(text) {
+    const log = document.getElementById('message_log')
+    const entry = document.createElement('div')
+    entry.textContent = text
+    entry.classList.add('msg-new')
+    log.appendChild(entry)
+    log.scrollTop = log.scrollHeight
+  }
+
+  function gameStart() {
+    logMessage(`Welcome to Sentient Money!  Money is an illusion, created by your mind, so you can mint as much as you want by clicking the Mint button. 
+But money wants to be spent! So any money that ends up in your account balance will spend itself automatically on Frippery, and anything that doesn't fit in your Account will buy the world around you when you mint it, and if you buy too much Frippery the game ends! 
+To prevent that, you must discipline your money. Try holding down the Discipline button so your money doesn't spend itself so fast, and buy a larger account so you can afford to buy all the tiles around you from your own excess value. 
+But watch out, your frippery also takes maintenance, and will collect Bills every so often!
+Click a tile to buy it!`)
+  }
+
+  function gameOver() {
+    clearInterval(frippery_clock)
+    clearInterval(billing_period)
+    clearInterval(speed_update)
+    clearInterval(accounts_clock)
+    clearInterval(tile_clock)
+    clearInterval(freedom_clock)
+    logMessage("GAME OVER: frippery exceeded maximum.")
+    document.getElementById('btn-discipline').style.borderColor = '#333'
+    document.getElementById('btn-discipline').style.color = '#333'
+  }
+
+  render()
+  render_tiles()
+  advanceStage()
+  gameStart()
+
+</script>
+</body>
+</html>
+
